@@ -26,10 +26,10 @@ class ChainMDP(gym.Env):
         is_done = lambda nsteps: nsteps >= self.max_nsteps
 
         r = reward(self.state, action)
-        if action:    # left
+        if action:    # right
             if self.state != self.n - 1:
                 self.state += 1
-        else:   # right
+        else:   # left
             if self.state != 0:
                 self.state -= 1
         self.nsteps += 1
