@@ -19,6 +19,8 @@ class DQN(nn.Module):
 
 if __name__ == "__main__":
     input = torch.Tensor(1)
-    model = DQN()
+    state = 1
+    input = torch.tensor(state, dtype=torch.float).unsqueeze(dim=0)
+    model = DQN(n_actions=2)
     output = model(input)
     print(output.shape)

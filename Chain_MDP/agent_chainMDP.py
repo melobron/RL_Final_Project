@@ -51,7 +51,7 @@ class Agent:
 
         if sample > eps_threshold:
             with torch.no_grad():
-                return self.policy_net(state).max(1)[1].view(1, 1)
+                return self.policy_net(state).unsqueeze(dim=0).max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randrange(self.n_actions)]], device=self.device, dtype=torch.long)
 
@@ -59,16 +59,19 @@ class Agent:
         if len(self.memory) < self.batch_size:
             return
         transitions = self.memory.sample(self.batch_size)
+
         batch = Transition(*zip(*transitions))
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)),
                                       device=self.device, dtype=torch.bool)
         non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
+
         state_batch = torch.cat(batch.state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+
+        state_action_values = self.policy_net(state_batch.unsqueeze(dim=1)).gather(1, action_batch)
         next_state_values = torch.zeros(self.batch_size, device=self.device)
-        next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()
+        next_state_values[non_final_mask] = self.target_net(non_final_next_states.unsqueeze(dim=1)).max(1)[0].detach()
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
         loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
@@ -83,16 +86,15 @@ class Agent:
         for episode in range(self.n_episodes):
             env.reset()
             state = env.state
-            state = torch.tensor(state)
-            print(state)
+            state = torch.tensor(state, dtype=torch.float).unsqueeze(dim=0).to(self.device)
 
             for t in count():
+                print(t)
                 action = self.action(state, t)
                 _, reward, done, _ = env.step(action.item())
                 reward = torch.tensor([reward], device=self.device)
-
                 if not done:
-                    next_state = env.state
+                    next_state = torch.tensor(env.state, dtype=torch.float).unsqueeze(dim=0).to(self.device)
                 else:
                     next_state = None
 
@@ -100,6 +102,9 @@ class Agent:
                 state = next_state
 
                 self.optimize_model()
+
+                if done:
+                    break
 
             if episode % self.target_update:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
