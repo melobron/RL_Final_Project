@@ -1,5 +1,6 @@
 import argparse
-
+import random
+import torch
 from chain_mdp import ChainMDP
 from agent_chainMDP import Agent
 
@@ -13,7 +14,7 @@ parser.add_argument("--random_seed", type=int, default=100, help='pytorch random
 # Training Parameters
 parser.add_argument("--batch_size", type=int, default=128, help='batch size')
 parser.add_argument("--lr", type=float, default=0.01, help='learning rate')
-parser.add_argument("--n_episodes", type=int, default=50, help='number of episodes')
+parser.add_argument("--n_episodes", type=int, default=10, help='number of episodes')
 parser.add_argument("--target_update", type=int, default=10, help='episode size of target update')
 parser.add_argument("--gamma", type=float, default=0.999, help='gamma factor for q learning')
 
@@ -35,9 +36,15 @@ agent.train(env)
 done = False
 cum_reward = 0.0
 # always move right left: 0, right: 1
-action = 1
-while not done:    
-    action = agent.action()
+step = 0
+state = torch.tensor(1, dtype=torch.float)
+print('Evaluation start')
+while not done:
+    action = agent.action(state, step)
+    action = action.cpu().item()
+    print(action)
     ns, reward, done, _ = env.step(action)
+    print(ns, reward, done)
     cum_reward += reward
+    step += 1
 print(f"total reward: {cum_reward}")
